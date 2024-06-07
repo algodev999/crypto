@@ -28,7 +28,7 @@ crypto_names = ['Bitcoin', 'Ethereum', 'Binance Coin', 'Cardano', 'Solana', 'XRP
 #---------------------------------------------------- Funções ------------------------------------
 
 
-# Função para baixar dados ao minuto
+# Função para fazer download dos dados ao minuto
 def download_minute_data(ticker, start, end):
     data_frames = []
     # Dividir o período em blocos de 2 dias para tentar contornar limitações
@@ -38,18 +38,18 @@ def download_minute_data(ticker, start, end):
         data = yf.download(ticker, start=current_start, end=current_end, interval='1m')
         data_frames.append(data)
         current_start = current_end + timedelta(minutes=1)  # Começar um minuto após o último fim
-    # Concatenar todos os DataFrames coletados
+    # Concatenar todos os DataFrames obtidos
     return pd.concat(data_frames)
 
 
-# Função para fazer download dos dados
+# Função para gravação dos dados
 def download_crypto_data(symbol, name):
     try:
         # Definir o período total de 30 dias
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
 
-        # Criar diretório para os arquivos CSV, se não existir
+        # Criar pasta para os arquivos CSV, se não existir
         if not os.path.exists('data'):
             os.makedirs('data')
         
@@ -85,7 +85,7 @@ def create_sequences(data, seq_length, forecast_length):
     y = []
     for i in range(len(data) - seq_length - forecast_length):
         X.append(data[i:(i + seq_length)])
-        y.append(data[(i + seq_length):(i + seq_length + forecast_length), 3])  # Previsão apenas do 'Close'
+        y.append(data[(i + seq_length):(i + seq_length + forecast_length), 3])  # Previsão apenas de 'Close'
     return np.array(X), np.array(y)
 
 
@@ -111,6 +111,12 @@ def train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, n_fea
     return model, history
 
 
+# Função para gerar um link de download para um arquivo
+def generate_download_link(file_path, file_name):
+    with open(file_path, "rb") as f:
+        bytes_data = f.read()
+        b64 = base64.b64encode(bytes_data).decode()
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">Fazer o download do ficheiro {file_name}</a>'
 
 
 
@@ -142,6 +148,7 @@ def set_sidebar_background(image_file):
         unsafe_allow_html=True
     )
 
+
 # Chamar a função para definir a imagem de fundo na sidebar
 set_sidebar_background("background.png")
 
@@ -157,11 +164,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+
 # Ajuste da posição do título principal
 st.markdown("<h1 style='text-align: center; margin-top: -60px;'>Previsão de Criptomoedas</h1>", unsafe_allow_html=True)
 
 
-# Layout com uma barra lateral para seleções e botões
+# Layout com barra lateral para seleções e botões
 with st.sidebar:
 
     st.markdown("<h2 style='margin-top: 60px;'>Opções</h2>", unsafe_allow_html=True)
@@ -171,10 +179,10 @@ with st.sidebar:
     crypto = st.selectbox('Selecione a Criptomoeda', crypto_names)
     crypto_symbol = cryptos[crypto_names.index(crypto)]
 
-    # Botão para carregar os dados
+    # Botão para download dos dados
     new_data_button = st.button('Obter novos dados')
 
-    # Botão para carregar os dados
+    # Botão para carregar os dados existentes
     load_data_button = st.button('Carregar dados existentes')
 
     # Seleção do horizonte de previsão
@@ -182,8 +190,8 @@ with st.sidebar:
     forecast_choice = st.selectbox('Selecione o Horizonte de Previsão', list(forecast_options.keys()))
     forecast_length = forecast_options[forecast_choice]
 
-    # Botão para treinar o modelo e fazer previsões
-    train_model_button = st.button('Treinar Modelo e Salvar')
+    # Botão para treinar o modelo
+    train_model_button = st.button('Treinar Modelo e Gravar')
 
     # Botão para carregar o modelo e fazer previsões
     predict_button = st.button('Carregar Modelo e Fazer Previsões')
@@ -192,7 +200,7 @@ with st.sidebar:
     instructions_button = st.button('Instruções')
 
     # Botão para mostrar o código do arquivo app.py
-    show_code_button = st.button('Mostrar Código do app.py')
+    show_code_button = st.button('Mostrar Código da App')
 
     # Texto do autor
     st.markdown(
@@ -223,20 +231,12 @@ if load_data_button:
         ax.set_xlabel('Data')
         ax.set_ylabel('Preço')
         ax.set_title(f'Gráfico do valor em USD ao minuto para {crypto}')
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=6))  # Definindo máximo de 6 rótulos no eixo X
-        fig.autofmt_xdate()  # Auto formatação das datas para melhor visualização
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=6)) 
+        fig.autofmt_xdate()
         st.pyplot(fig)
 
 
-# Função para gerar um link de download para um arquivo
-def generate_download_link(file_path, file_name):
-    with open(file_path, "rb") as f:
-        bytes_data = f.read()
-        b64 = base64.b64encode(bytes_data).decode()
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">Fazer o download do ficheiro {file_name}</a>'
-
-
-
+# Função do Botão para treinar o modelo
 if train_model_button:
     data, start_date, end_date = load_crypto_data(crypto)
     if data is not None:
@@ -245,7 +245,7 @@ if train_model_button:
         # Normalização e criação de sequências de dados
         scaler = MinMaxScaler(feature_range=(0, 1))
         data_normalized = scaler.fit_transform(data[['Open', 'High', 'Low', 'Close', 'Volume']])
-        seq_length = 60  # Usando uma hora de dados para previsão
+        seq_length = 60  # Uma hora de dados para previsão
         X, y = create_sequences(data_normalized, seq_length, forecast_length)
         
         # Dividir dados em treino e validação
@@ -260,18 +260,18 @@ if train_model_button:
         with st.spinner('Treinando modelo...'):
             model, history = train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, len(['Open', 'High', 'Low', 'Close', 'Volume']))
         
-        # Salvar o modelo treinado
+        # Gravar o modelo treinado
         model.save(f'models/GRU_{crypto_symbol}_{forecast_length}.h5')
-        st.success(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos treinado e salvo com sucesso!')
+        st.success(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos treinado e gravado com sucesso!')
         
         # Fazer previsões para o conjunto de validação
         predictions_val = model.predict(X_val)
         
-        # Invertendo a normalização das previsões e dos valores reais
+        # Inverter a normalização das previsões e dos valores reais
         predictions_val_original = invert_normalization(scaler, predictions_val[:, -1], len(['Open', 'High', 'Low', 'Close', 'Volume']))
         y_val_original = invert_normalization(scaler, y_val[:, -1], len(['Open', 'High', 'Low', 'Close', 'Volume']))
         
-        # Calculando MSE, RMSE, MAE, MAPE
+        # Calcular MSE, RMSE, MAE, MAPE
         mse = mean_squared_error(y_val_original, predictions_val_original)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_val_original, predictions_val_original)
@@ -280,7 +280,7 @@ if train_model_button:
         # Normalized RMSE
         normalized_rmse = rmse / (y_val_original.max() - y_val_original.min())
         
-        # Exibindo as métricas
+        # Apresentar as métricas
         st.subheader('Métricas de Erro')
         st.write(f'MSE: {mse}')
         st.write(f'RMSE: {rmse}')
@@ -299,9 +299,10 @@ if train_model_button:
         st.pyplot(fig)
 
 
+# Função do Botão de previsão
 if predict_button:
     if os.path.exists(f'models/GRU_{crypto_symbol}_{forecast_length}.h5'):
-        # Carregar o modelo salvo
+        # Carregar o modelo gravado
         model = load_model(f'models/GRU_{crypto_symbol}_{forecast_length}.h5')
         data, start_date, end_date = load_crypto_data(crypto, )
         if data is not None:
@@ -310,18 +311,18 @@ if predict_button:
             # Normalização e criação de sequências de dados
             scaler = MinMaxScaler(feature_range=(0, 1))
             data_normalized = scaler.fit_transform(data[['Open', 'High', 'Low', 'Close', 'Volume']])
-            seq_length = 60  # Usando uma hora de dados para previsão
+            seq_length = 60  # Uma hora de dados para previsão
             
             # Previsão para os próximos n minutos
             last_sequence = data_normalized[-seq_length:]
             last_sequence = last_sequence.reshape(1, seq_length, len(['Open', 'High', 'Low', 'Close', 'Volume']))
             predictions_future = model.predict(last_sequence)
             
-            # Invertendo a normalização das previsões e dos valores reais
+            # Inverter a normalização das previsões e dos valores reais
             predictions_future_original = invert_normalization(scaler, predictions_future.flatten(), len(['Open', 'High', 'Low', 'Close', 'Volume']))
             
-            # Gráfico de previsão futura
-            st.subheader(f'Previsão para os Próximos {forecast_length} Minutos')
+            # Gráfico de previsão
+            st.subheader(f'Previsão para os próximos {forecast_length} minutos')
             fig, ax = plt.subplots()
             ax.plot(predictions_future_original, label='Previsão Futura')
             ax.set_xlabel('Minutos')
@@ -331,9 +332,10 @@ if predict_button:
             
             st.success(f'Modelo GRU para {crypto} carregado e previsão de {forecast_length} minutos realizada com sucesso!')
     else:
-        st.error(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos não encontrado. Treine e salve o modelo primeiro.')
+        st.error(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos não encontrado. Treine e grave o modelo primeiro.')
 
 
+# Função do Botão de Instruções
 if instructions_button:
     st.markdown("### Instruções para Instalar o Arquivo `requirements.txt` e Executar o Streamlit")
     st.markdown("""
@@ -359,8 +361,9 @@ if instructions_button:
         st.error("Arquivo `requirements.txt` não encontrado.")
 
 
+# Função do Botão de apresentação do código da App
 if show_code_button:
-    st.markdown("### Código do arquivo `app.py`")
+    st.markdown("### Código da App")
     try:
         with open("app.py", "r") as file:
             code_content = file.read()
