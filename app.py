@@ -169,7 +169,7 @@ st.markdown("""
 st.markdown("<h1 style='text-align: center; margin-top: -60px;'>Previsão de Criptomoedas</h1>", unsafe_allow_html=True)
 
 
-# Layout com barra lateral para seleções e botões
+# Layout com barra lateral para as opções
 with st.sidebar:
 
     st.markdown("<h2 style='margin-top: 60px;'>Opções</h2>", unsafe_allow_html=True)
@@ -180,27 +180,27 @@ with st.sidebar:
     crypto_symbol = cryptos[crypto_names.index(crypto)]
 
     # Botão para download dos dados
-    new_data_button = st.button('Obter novos dados')
+    new_data_button = st.button('Obter novos dados para treino')
 
     # Botão para carregar os dados existentes
     load_data_button = st.button('Carregar dados existentes')
 
     # Seleção do horizonte de previsão
     forecast_options = {'60 minutos': 60, '6 horas': 360, '12 horas': 720, '24 horas': 1440}
-    forecast_choice = st.selectbox('Selecione o Horizonte de Previsão', list(forecast_options.keys()))
+    forecast_choice = st.selectbox('Selecione o horizonte de previsão', list(forecast_options.keys()))
     forecast_length = forecast_options[forecast_choice]
 
     # Botão para treinar o modelo
-    train_model_button = st.button('Treinar Modelo e Gravar')
+    train_model_button = st.button('Treinar modelo e gravar')
 
     # Botão para carregar o modelo e fazer previsões
-    predict_button = st.button('Carregar Modelo e Fazer Previsões')
+    predict_button = st.button('Carregar modelo e fazer previsões')
 
     # Botão para mostrar instruções e permitir download do requirements.txt
     instructions_button = st.button('Instruções')
 
     # Botão para mostrar o código do arquivo app.py
-    show_code_button = st.button('Mostrar Código da App')
+    show_code_button = st.button('Mostrar código da App')
 
     # Texto do autor
     st.markdown(
@@ -337,7 +337,7 @@ if predict_button:
 
 # Função do Botão de Instruções
 if instructions_button:
-    st.markdown("### Instruções para Instalar o Arquivo `requirements.txt` e Executar o Streamlit")
+    st.markdown("### Instruções para instalar o arquivo `requirements.txt` e executar o Streamlit numa máquina local")
     st.markdown("""
         1. **Instale as dependências a partir do arquivo `requirements.txt`**:
            ```bash
