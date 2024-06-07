@@ -257,7 +257,7 @@ if train_model_button:
         X_val = X_val.reshape((X_val.shape[0], X_val.shape[1], len(['Open', 'High', 'Low', 'Close', 'Volume'])))
         
         # Treinar o modelo GRU
-        with st.spinner('Treinando modelo...'):
+        with st.spinner('A treinar o modelo...'):
             model, history = train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, len(['Open', 'High', 'Low', 'Close', 'Volume']))
         
         # Gravar o modelo treinado
