@@ -13,14 +13,12 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import GRU, Dense
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, Callback
 
 
 # Lista de criptomoedas disponíveis
 cryptos = ['BTC-USD', 'ETH-USD', 'BNB-USD', 'ADA-USD', 'SOL-USD', 'XRP-USD', 'DOT-USD', 'USDC-USD', 'DOGE-USD', 'AVAX-USD']
 crypto_names = ['Bitcoin', 'Ethereum', 'Binance Coin', 'Cardano', 'Solana', 'XRP', 'Polkadot', 'USD Coin', 'Dogecoin', 'Avalanche']
-
-
 
 
 
@@ -98,7 +96,7 @@ def invert_normalization(scaler, data, n_features):
 
 
 # Função para treinar o modelo GRU
-def train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, n_features):
+def train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, n_features, epochs):
     model = Sequential()
     model.add(GRU(50, return_sequences=True, input_shape=(seq_length, n_features)))
     model.add(GRU(50))
@@ -106,8 +104,9 @@ def train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, n_fea
 
     model.compile(optimizer='adam', loss='mean_squared_error')
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    streamlit_callback = StreamlitCallback(epochs)
 
-    history = model.fit(X_train, y_train, epochs=50, batch_size=64, validation_data=(X_val, y_val), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=epochs, batch_size=64, validation_data=(X_val, y_val), callbacks=[early_stopping, streamlit_callback])
     return model, history
 
 
@@ -119,11 +118,17 @@ def generate_download_link(file_path, file_name):
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">Fazer o download do ficheiro {file_name}</a>'
 
 
+# Callback para atualizar o progresso dos epochs no Streamlit
+class StreamlitCallback(Callback):
+    def __init__(self, epochs):
+        self.epochs = epochs
+        self.progress_bar = st.progress(0)
+        self.status_text = st.empty()
 
-
-
-
-
+    def on_epoch_end(self, epoch, logs=None):
+        progress = (epoch + 1) / self.epochs
+        self.progress_bar.progress(progress)
+        self.status_text.text(f"Epoch {epoch + 1}/{self.epochs} - Loss: {logs['loss']:.4f}")
 
 
 
@@ -205,7 +210,7 @@ with st.sidebar:
     # Texto do autor
     st.markdown(
         """
-        **Aplicação desenvolvida por Mguel Machado no âmbito da tese de Mestrado do curso de Engenharia Informática - Ramo Sistemas de Informação e Conhecimento do Instituto Superior de Engenharia do Porto - ISEP**
+        **Aplicação desenvolvida por Miguel Machado no âmbito da tese de Mestrado do curso de Engenharia Informática - Ramo Sistemas de Informação e Conhecimento do Instituto Superior de Engenharia do Porto - ISEP**
         """
     )
 
@@ -245,7 +250,7 @@ if train_model_button:
         # Normalização e criação de sequências de dados
         scaler = MinMaxScaler(feature_range=(0, 1))
         data_normalized = scaler.fit_transform(data[['Open', 'High', 'Low', 'Close', 'Volume']])
-        seq_length = 60  # Uma hora de dados para previsão
+        seq_length = 60  # Usando uma hora de dados para previsão
         X, y = create_sequences(data_normalized, seq_length, forecast_length)
         
         # Dividir dados em treino e validação
@@ -257,21 +262,22 @@ if train_model_button:
         X_val = X_val.reshape((X_val.shape[0], X_val.shape[1], len(['Open', 'High', 'Low', 'Close', 'Volume'])))
         
         # Treinar o modelo GRU
+        epochs = 50  # Número de epochs para o treinamento
         with st.spinner('A treinar o modelo...'):
-            model, history = train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, len(['Open', 'High', 'Low', 'Close', 'Volume']))
+            model, history = train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, len(['Open', 'High', 'Low', 'Close', 'Volume']), epochs)
         
-        # Gravar o modelo treinado
+        # Salvar o modelo treinado
         model.save(f'models/GRU_{crypto_symbol}_{forecast_length}.h5')
-        st.success(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos treinado e gravado com sucesso!')
+        st.success(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos treinado e salvo com sucesso!')
         
         # Fazer previsões para o conjunto de validação
         predictions_val = model.predict(X_val)
         
-        # Inverter a normalização das previsões e dos valores reais
+        # Invertendo a normalização das previsões e dos valores reais
         predictions_val_original = invert_normalization(scaler, predictions_val[:, -1], len(['Open', 'High', 'Low', 'Close', 'Volume']))
         y_val_original = invert_normalization(scaler, y_val[:, -1], len(['Open', 'High', 'Low', 'Close', 'Volume']))
         
-        # Calcular MSE, RMSE, MAE, MAPE
+        # Calculando MSE, RMSE, MAE, MAPE
         mse = mean_squared_error(y_val_original, predictions_val_original)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_val_original, predictions_val_original)
@@ -280,7 +286,7 @@ if train_model_button:
         # Normalized RMSE
         normalized_rmse = rmse / (y_val_original.max() - y_val_original.min())
         
-        # Apresentar as métricas
+        # Exibindo as métricas
         st.subheader('Métricas de Erro')
         st.write(f'MSE: {mse}')
         st.write(f'RMSE: {rmse}')
@@ -293,8 +299,6 @@ if train_model_button:
         fig, ax = plt.subplots()
         ax.plot(y_val_original, label='Valor Real')
         ax.plot(predictions_val_original, label='Previsão')
-        ax.set_xlabel('Minutos')
-        ax.set_ylabel('Preço em USD')
         ax.legend()
         st.pyplot(fig)
 
