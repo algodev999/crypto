@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from matplotlib.ticker import MaxNLocator
 
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import GRU, Dense
 from tensorflow.keras.callbacks import EarlyStopping, Callback
@@ -171,7 +171,7 @@ st.markdown("""
 
 
 # Ajuste da posição do título principal
-st.markdown("<h1 style='text-align: center; margin-top: -60px;'>Previsão de Criptomoedas</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: -60px;'>Previsão de evolução de Criptomoedas</h1>", unsafe_allow_html=True)
 
 
 # Layout com barra lateral para as opções
@@ -185,13 +185,13 @@ with st.sidebar:
     crypto_symbol = cryptos[crypto_names.index(crypto)]
 
     # Botão para download dos dados
-    new_data_button = st.button('Obter novos dados para treino')
+    new_data_button = st.button('Obter novos dados')
 
     # Botão para carregar os dados existentes
     load_data_button = st.button('Carregar dados existentes')
 
     # Seleção do horizonte de previsão
-    forecast_options = {'60 minutos': 60, '6 horas': 360, '12 horas': 720, '24 horas': 1440}
+    forecast_options = {'60 minutos': 60, '2 horas': 120, '3 horas': 180, '4 horas': 240}
     forecast_choice = st.selectbox('Selecione o horizonte de previsão', list(forecast_options.keys()))
     forecast_length = forecast_options[forecast_choice]
 
@@ -250,7 +250,7 @@ if train_model_button:
         # Normalização e criação de sequências de dados
         scaler = MinMaxScaler(feature_range=(0, 1))
         data_normalized = scaler.fit_transform(data[['Open', 'High', 'Low', 'Close', 'Volume']])
-        seq_length = 60  # Usando uma hora de dados para previsão
+        seq_length = forecast_length  # Usando uma hora de dados para previsão
         X, y = create_sequences(data_normalized, seq_length, forecast_length)
         
         # Dividir dados em treino e validação
@@ -266,27 +266,27 @@ if train_model_button:
         with st.spinner('A treinar o modelo...'):
             model, history = train_gru(X_train, y_train, X_val, y_val, seq_length, forecast_length, len(['Open', 'High', 'Low', 'Close', 'Volume']), epochs)
         
-        # Salvar o modelo treinado
+        # Gravar o modelo treinado
         model.save(f'models/GRU_{crypto_symbol}_{forecast_length}.h5')
         st.success(f'Modelo GRU para {crypto} com previsão de {forecast_length} minutos treinado e salvo com sucesso!')
         
         # Fazer previsões para o conjunto de validação
         predictions_val = model.predict(X_val)
         
-        # Invertendo a normalização das previsões e dos valores reais
+        # Inverter a normalização das previsões e dos valores reais
         predictions_val_original = invert_normalization(scaler, predictions_val[:, -1], len(['Open', 'High', 'Low', 'Close', 'Volume']))
         y_val_original = invert_normalization(scaler, y_val[:, -1], len(['Open', 'High', 'Low', 'Close', 'Volume']))
         
-        # Calculando MSE, RMSE, MAE, MAPE
+        # Calcular MSE, RMSE, MAE, MAPE
         mse = mean_squared_error(y_val_original, predictions_val_original)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_val_original, predictions_val_original)
-        mape = np.mean(np.abs((y_val_original - predictions_val_original) / y_val_original)) * 100
+        mape = mean_absolute_percentage_error(y_val_original, predictions_val_original)*100
         
         # Normalized RMSE
         normalized_rmse = rmse / (y_val_original.max() - y_val_original.min())
         
-        # Exibindo as métricas
+        # Apresentar as métricas
         st.subheader('Métricas de Erro')
         st.write(f'MSE: {mse}')
         st.write(f'RMSE: {rmse}')
