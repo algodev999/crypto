@@ -49,17 +49,19 @@ def download_minute_data(ticker, start, end):
 def clean_csv_yfinance(csv_path):
     with open(csv_path, 'r') as f:
         lines = f.readlines()
-    
+
     if len(lines) > 1 and 'Ticker' in lines[1]:
         lines.pop(1)
 
-    columns = lines[0].strip().split(',')
-    columns[0] = 'Datetime'
-    lines[0] = ','.join(columns) + '\n'
+    cols = lines[0].strip().split(',')
+    cols[0] = 'Datetime'
+    lines[0] = ','.join(cols) + '\n'
+
+    if len(lines) > 2 and lines[2].lower().startswith('datetime'):
+        lines.pop(2)
 
     with open(csv_path, 'w') as f:
         f.writelines(lines)
-
 
 # Function to save the data
 def download_crypto_data(symbol, name):
@@ -75,7 +77,7 @@ def download_crypto_data(symbol, name):
         print(f"Downloading data for {name}")
         data = download_minute_data(symbol, start_date, end_date)
         csv_path = os.path.join('data', f'{name}.csv')
-        data.to_csv(csv_path)
+        data.to_csv(csv_path, index=True, encoding='utf-8', sep=',')
         
         st.markdown(create_download_link(csv_path, f"{symbol}_original.csv"), unsafe_allow_html=True)
 
