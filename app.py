@@ -23,10 +23,11 @@ crypto_names = ['Bitcoin', 'Ethereum', 'Binance Coin', 'Cardano', 'Solana', 'XRP
 
 #---------------------------------------------------- Functions ------------------------------------
 
-def gerar_link_download_csv(df, nome_ficheiro):
-    csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="{nome_ficheiro}">📥 Download CSV gerado</a>'
+def gerar_link_download_ficheiro(caminho_csv, nome_exibicao):
+    with open(caminho_csv, "rb") as f:
+        conteudo = f.read()
+    b64 = base64.b64encode(conteudo).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{nome_exibicao}">📥 Download CSV original ({nome_exibicao})</a>'
     return href
 
 # Function to download minute data
@@ -74,9 +75,12 @@ def download_crypto_data(symbol, name):
         data = download_minute_data(symbol, start_date, end_date)
         csv_path = os.path.join('data', f'{name}.csv')
         data.to_csv(csv_path)
+        
+        st.markdown(gerar_link_download_ficheiro(csv_path, f"{symbol}_original.csv"), unsafe_allow_html=True)
+
         clean_csv_yfinance(csv_path)
 
-        st.markdown(gerar_link_download_csv(data, f"{symbol}_dados.csv"), unsafe_allow_html=True)
+        
 
         if not data.empty:
             return True, None
