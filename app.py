@@ -38,6 +38,22 @@ def download_minute_data(ticker, start, end):
     return pd.concat(data_frames)
 
 
+#Clean the csv file due to yfinance API update
+def clean_csv_yfinance(csv_path):
+    with open(csv_path, 'r') as f:
+        lines = f.readlines()
+    
+    if len(lines) > 1 and 'Ticker' in lines[1]:
+        lines.pop(1)
+
+    columns = lines[0].strip().split(',')
+    columns[0] = 'Datetime'
+    lines[0] = ','.join(columns) + '\n'
+
+    with open(csv_path, 'w') as f:
+        f.writelines(lines)
+
+
 # Function to save the data
 def download_crypto_data(symbol, name):
     try:
@@ -53,6 +69,7 @@ def download_crypto_data(symbol, name):
         data = download_minute_data(symbol, start_date, end_date)
         csv_path = os.path.join('data', f'{name}.csv')
         data.to_csv(csv_path)
+        clean_csv_yfinance(csv_path)
 
         if not data.empty:
             return True, None
@@ -207,7 +224,7 @@ with st.sidebar:
     # Author text
     st.markdown(
         """
-        **Application developed by Miguel Machado as part of the Master's thesis for the Computer Engineering course - Information and Knowledge Systems branch at Instituto Superior de Engenharia do Porto - ISEP**
+        **Application developed by Miguel Machado as part of the Master's thesis for the Computer Engineering course - Information and Knowledge Systems branch at Instituto Superior de Engenharia do Porto - ISEP. To ensure continuous improvement and address potential issues, users are encouraged to provide feedback via email at crypto.mm.feedback@gmail.com**
         """
     )
 
