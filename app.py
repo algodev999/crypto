@@ -45,20 +45,18 @@ def download_minute_data(ticker, start, end):
     return pd.concat(data_frames)
 
 
-#Clean the csv file due to yfinance API update
+#Clean the csv file due to yfinance API update to Version 0.2.55
 def clean_csv_yfinance(csv_path):
     with open(csv_path, 'r') as f:
         lines = f.readlines()
 
     if len(lines) > 1 and 'Ticker' in lines[1]:
+        lines.pop(2)
         lines.pop(1)
 
     cols = lines[0].strip().split(',')
     cols[0] = 'Datetime'
     lines[0] = ','.join(cols) + '\n'
-
-    if len(lines) > 2 and lines[2].lower().startswith('datetime'):
-        lines.pop(2)
 
     with open(csv_path, 'w') as f:
         f.writelines(lines)
